@@ -1,0 +1,789 @@
+---
+title: "Stats 506 - Final project"
+author: "Hood Ahmed"
+format:
+  html:
+    toc: true
+    embed-resources: true
+editor: visual
+---
+
+Github link: <https://github.com/hood-ahmed/final-project>
+
+# Packages
+
+```{r, message=FALSE}
+
+library(tidyverse)
+library(stargazer)
+library(lme4) 
+library(sjPlot)
+library(coefplot)
+library(multcomp)
+library(patchwork) 
+library(broom)
+library(psych) 
+
+```
+
+# Reading the data
+
+```{r, warning=FALSE}
+
+# Just put them all in one file to do this. in stats course folder
+
+setwd("C:/Users/hoods/OneDrive/Desktop/Stats 506/Final project/Data")
+
+ab2 <- read.csv("AB2_English.csv")
+
+ab3 <- read.csv("AB3_English.csv")
+
+ab4 <- read.csv("ABIV_English.csv")
+
+```
+
+# Data Cleaning
+
+When recoding, I was looking for variables that were there for the three waves so I can combine them. I had to eliminate several options since they were not
+
+## Recoding
+
+```{r, warning=FALSE}
+
+
+## Political Trust 
+# I reversed the order to make it more interpretable. 
+# so that 1 is no trust and 4 is high trust
+
+ab2 <- ab2 %>%
+  mutate_at(vars(q2011, q2012, q2013, q2014, q2015, q2016, q2017, q20112, q20114),
+            list(~recode(., "4. i absolutely do not trust it" = 1,
+                         "3. i trust it to a limited extent" = 2,
+                         "2. i trust it to a medium extent" = 3,
+                         "1. i trust it to a great extent" = 4)))
+
+
+ab2 <- ab2 %>%
+  mutate(country = recode(country,
+                          "1. Algeria" = "Algeria",
+                          "5. Egypt" = "Egypt",
+                          "7. Iraq" = "Iraq",
+                          "8. Jordan" = "Jordan",
+                          "10. Lebanon" = "Lebanon",
+                          "15. Palestine" = "Palestine",
+                          "17. Saudi Arabia" = "Saudi Arabia",
+                          "19. Sudan" = "Sudan",
+                          "21. Tunisia" = "Tunisia",
+                          "22. Yemen" = "Yemen"
+                          ))
+  
+###### Performance evaluations
+
+# Economy
+ab2 <- ab2 %>%
+  mutate_at(vars(q101),
+            list(~recode(., "1. very good" = 1,
+                         "2. good" = 2,
+                         "3. bad" = 3,
+                         "4. very bad" = 4)))
+## Safety
+ab2 <- ab2 %>%
+  mutate_at(vars(q105),
+            list(~recode(., "1. fully ensured" = 1,
+                         "2. ensured" = 2,
+                         "3. not ensured" = 3,
+                         "4. absolutely not ensured" = 4)))
+
+###### Sociocultural attitudes
+
+
+
+ab2 <- ab2 %>%
+  mutate_at(vars(q60102, q60103, q60104),
+            list(~ recode(., "I strongly agree" = 1,
+                          "I somewhat agree" = 2,
+                          "I somewhat disagree" = 3,
+                          "I strongly disagree" = 4)))
+### Democracy
+
+
+ab2 <- ab2 %>%
+  mutate(q512 = recode(q512,
+                       "1. absolutely unsatisfied" = 1,
+                       "2"= 2,
+                       "3" = 3,
+                       "4" = 4,
+                       "5" = 5,
+                       "6" = 6,
+                       "7" = 7,
+                       "8" = 8,
+                       "9" = 9,
+                       "10. very satisfied" = 10))
+
+
+### Religion: 
+
+# Public role
+#
+ab2 <- ab2 %>%
+  mutate_at(vars(q6051, q6052, q6053, q6054, q6055, q6056),
+            list(~ recode(., "1. i strongly agree" = 1,
+                          "2. i agree" = 2,
+                          "3. i disagree" = 3,
+                          "4. i strongly disagree" = 4)))
+
+ab2 <- ab2 %>%
+  mutate_at(vars(q6061, q6062, q6063, q6064, q6065, q6066),
+            list(~ recode(., "1. i strongly agree" = 1,
+                          "2. i agree" = 2,
+                          "3. i disagree" = 3,
+                          "4. i strongly disagree" = 4)))
+
+## Religiousity (self-reported)
+ab2 <- ab2 %>%
+  mutate(q609 = recode(q609,
+                       "1. religious" = 1,
+                       "2. somewhat religious" = 2,
+                       "3. not religious" = 3))
+
+## Religiousity (self-reported)
+ab2 <- ab2 %>%
+  mutate_at(vars(q6101, q6102, q6103, q6104, q6105, q6106, q6107), 
+            list(~ recode(., "1. always" = 1,
+                          "2. most of the time" = 2,
+                          "3. sometimes" = 3,
+                          "4. rarely" = 4)))
+
+############ Demographics
+
+# Education
+
+ab2 <- ab2 %>%
+  mutate(q1003 = recode(q1003,
+                       "1. Illiterate/literate" = 0,
+                       "2. elementary" = 1,
+                       "3. prepartory/basic" = 2,
+                       "5. mid-level diploma/professional or technical" = 3,
+                       "4. secondary" = 4,
+                       "6, ba" = 5,
+                       "7. ma and above" = 6
+                       ))
+
+# Religion
+
+ab2 <- ab2 %>%
+  mutate(q1012 = recode(q1012,
+                       "1. muslim" = 1,
+                       "2. christian" = 2))
+
+## DV: Pol trust
+ab3 <- ab3 %>%
+  mutate_at(vars(q2011, q2013, q2014, q2016, q2017, q20112, q20113, q20114),
+            list(~recode(., "I absolutely do not trust it" = 1,
+                         "I trust it to a limited extent" = 2,
+                         "I trust it to a medium extent" = 3,
+                         "I trust it to a great extent" = 4)))
+
+######## Performance
+
+## Economy
+ab3 <- ab3 %>%
+  mutate_at(vars(q101),
+            list(~recode(., "Very good" = 1,
+                         "Good" = 2,
+                         "Bad" = 3,
+                         "Very bad" = 4)))
+
+## Safety
+ab3 <- ab3 %>%
+  mutate_at(vars(q105),
+            list(~recode(., "Fully ensured" = 1,
+                         "Ensured" = 2,
+                         "Not ensured" = 3,
+                         "Absolutely not ensured" = 4)))
+
+######## Socilcultural views
+
+ab3 <- ab3 %>%
+  mutate(q103 = recode(q103,
+                            "Most people are trustworthy" = 1,
+                            "Most people are not trustworthy" = 2))
+
+############ Religion
+
+ab3 <- ab3 %>%
+  mutate_at(vars(q6051, q6052, q6053, q6054, q6055, q6056),
+            list(~ recode(., "I strongly agree" = 1,
+                          "I somewhat agree" = 2,
+                          "I somewhat disagree" = 3,
+                          "I strongly disagree" = 4)))
+
+ab3 <- ab3 %>%
+  mutate_at(vars(q6061, q6062, q6063, q6064, q6065, q6066),
+            list(~ recode(., "I strongly agree" = 1,
+                          "I somewhat agree" = 2,
+                          "I somewhat disagree" = 3,
+                          "I strongly disagree" = 4)))
+
+##  Support for gender equality
+
+ab3 <- ab3 %>%
+  mutate_at(vars(q6012, q6013, q6014),
+            list(~ recode(., "I strongly agree" = 1,
+                          "I somewhat agree" = 2,
+                          "I somewhat disagree" = 3,
+                          "I strongly disagree" = 4)))
+
+## Support for Democracy
+
+ab3 <- ab3 %>%
+  mutate(q512 = recode(q512,
+                       "Absolutely inappropriate" = 1,
+                       "2"= 2,
+                       "3" = 3,
+                       "4" = 4,
+                       "5" = 5,
+                       "6" = 6,
+                       "7" = 7,
+                       "8" = 8,
+                       "9" = 9,
+                       "Completely appropriate" = 10))
+
+## Religiousity
+
+ab3 <- ab3 %>%
+  mutate(q609 = recode(q609,
+                       "Religious" = 1,
+                       "Somewhat religious" = 2,
+                       "Not religious" = 3))
+
+###### Demographics
+
+# Sex
+
+ab3 <- ab3 %>%
+  mutate(sex = recode(sex,
+                       "Male" = 0,
+                       "Female" = 1))
+
+# Religion
+
+ab3 <- ab3 %>%
+  mutate(q1012 = recode(q1012,
+                       "Muslim" = 1,
+                       "Christian" = 2))
+# education
+
+ab3 <- ab3 %>%
+  mutate(q1003 = recode(q1003,
+                       "Illiterate/No formal education" = 0,
+                       "Elementary" = 1,
+                       "Prepartory/Basic" = 2,
+                       "Mid-level diploma (professional or technical)" = 3,
+                       "Secondary" = 4,
+                       "ba" = 5,
+                       "MA and above" = 6
+                       ))
+
+## Pol Trust
+ab4 <- ab4 %>%
+  mutate_at(vars(q2011, q2013, q2014, q2016, q20113),
+            list(~recode(., "No trust at all" = 1,
+                         "Not very much trust" = 2,
+                         "Quite a lot of trust" = 3,
+                         "A great deal of trust" = 4)))
+
+## Economy
+ab4 <- ab4 %>%
+  mutate_at(vars(q101),
+            list(~recode(., "Very good" = 1,
+                         "Good" = 2,
+                         "Bad" = 3,
+                         "Very bad" = 4)))
+
+## Safety
+ab4 <- ab4 %>%
+  mutate_at(vars(q105),
+            list(~recode(., "Fully ensured" = 1,
+                         "Ensured" = 2,
+                         "Not ensured" = 3,
+                         "Absolutely not ensured" = 4)))
+
+############## Sociocultural values
+
+ab4 <- ab4 %>%
+  mutate(q103 = recode(q103,
+                            "Most people are trustworthy" = 1,
+                            "Most people are not trustworthy" = 2))
+####### Religion
+
+# No q6065, q6066
+ab4 <- ab4 %>%
+  mutate_at(vars(q6061, q6062, q6063, q6064),
+            list(~ recode(., "I strongly agree" = 1,
+                          "I agree" = 2,
+                          "I disagree" = 3,
+                          "I strongly disagree" = 4)))
+
+# Religiousity
+
+ab4 <- ab4 %>%
+  mutate(q609 = recode(q609,
+                       "Religious" = 1,
+                       "Somewhat religious" = 2,
+                       "Not religious" = 3))
+
+
+## support for gender equality
+
+ab4 <- ab4 %>%
+  mutate_at(vars(q6012, q6013, q6014),
+            list(~ recode(., "I strongly agree" = 1,
+                          "I agree" = 2,
+                          "I disagree" = 3,
+                          "I strongly disagree" = 4)))
+
+## support for Democracy
+
+ab4 <- ab4 %>%
+  mutate(q512 = recode(q512,
+                       "Completely inappropriate" = 1,
+                       "2"= 2,
+                       "3" = 3,
+                       "4" = 4,
+                       "5" = 5,
+                       "6" = 6,
+                       "7" = 7,
+                       "8" = 8,
+                       "9" = 9,
+                       "Completely appropriate" = 10))
+
+## X
+
+###### Demographics
+
+# Sex
+
+ab4 <- ab4 %>%
+  mutate(q1002 = recode(q1002,
+                       "Male" = 0,
+                       "Female" = 1))
+
+# religion
+
+ab4 <- ab4 %>%
+  mutate(q1012 = recode(q1012,
+                       "Muslim" = 1,
+                       "Christian" = 2))
+# education
+
+ab4 <- ab4 %>%
+  mutate(q1003 = recode(q1003,
+                       "Illiterate/No formal education" = 0,
+                       "Elementary" = 1,
+                       "Prepartory/Basic" = 2,
+                       "Mid-level diploma (professional or technical)" = 3,
+                       "Secondary" = 4,
+                       "ba" = 5,
+                       "MA and above" = 6
+                       ))
+```
+
+## Renaming
+
+```{r}
+
+# Pol trust
+names(ab2)[names(ab2) == "q2011"]   <- "govt_trust" # DV
+names(ab2)[names(ab2) == "q2012"]   <- "judiciary_trust"
+names(ab2)[names(ab2) == "q2014"]   <- "police_trust"
+names(ab2)[names(ab2) == "q2015"]   <- "parties_trust"
+names(ab2)[names(ab2) == "q2016"]   <- "army_trust" # DV
+names(ab2)[names(ab2) == "q20112"]  <- "islamist_trust_eg"
+names(ab2)[names(ab2) == "q20114"]  <- "islamist_trust_tu"
+
+### Performance
+
+names(ab2)[names(ab2) == "q101"] <- "econ_performance"
+names(ab2)[names(ab2) == "q105"] <- "safety"
+
+### sociocultural views
+
+names(ab2)[names(ab2) == "q609"] <- "religiousity"
+
+names(ab2)[names(ab2) == "q512"] <- "support_for_democracy"
+
+names(ab2)[names(ab2) == "q6062"] <- "support_for_secularism"
+
+names(ab2)[names(ab2) == "q6012"] <- "support_for_gender_equality"
+
+### Demographics
+
+names(ab2)[names(ab2) == "q1012"] <- "religion"
+
+names(ab2)[names(ab2) == "q1003"] <- "education"
+
+# Pol trust
+names(ab3)[names(ab3) == "q2011"]   <- "govt_trust"
+names(ab3)[names(ab3) == "q2014"]   <- "police_trust"
+names(ab3)[names(ab3) == "q2016"]   <- "army_trust"
+names(ab3)[names(ab3) == "q20112"]  <- "islamist_trust"
+names(ab3)[names(ab3) == "q20114"]  <- "islamist_trust_tu" 
+
+### Performance
+
+names(ab3)[names(ab3) == "q101"] <- "econ_performance"
+names(ab3)[names(ab3) == "q105"] <- "safety"
+
+
+### sociocultural views
+
+
+names(ab3)[names(ab3) == "q512"] <- "support_for_democracy"
+
+names(ab3)[names(ab3) == "q6012"] <- "support_for_gender_equality"
+
+# Religion
+names(ab3)[names(ab3) == "q6052"] <- "support_for_sharia"
+
+names(ab3)[names(ab3) == "q6062"] <- "support_for_secularism"
+
+names(ab3)[names(ab3) == "q609"] <- "religiousity"
+
+### Demographics
+
+names(ab3)[names(ab3) == "q1012"] <- "religion"
+
+names(ab3)[names(ab3) == "q1003"] <- "education"
+
+### Political trust
+
+names(ab4)[names(ab4) == "q2011"]   <- "govt_trust"
+names(ab4)[names(ab4) == "q2014"]   <- "police_trust"
+names(ab4)[names(ab4) == "q2016"]   <- "army_trust"
+names(ab4)[names(ab4) == "q20112"]  <- "islamist_trust"
+
+### Performance evaluation
+
+names(ab4)[names(ab4) == "q101"] <- "econ_performance"
+names(ab4)[names(ab4) == "q105"] <- "safety"
+
+### Sociocultural views
+
+# Religion
+names(ab4)[names(ab4) == "q512"] <- "support_for_democracy"
+
+names(ab4)[names(ab4) == "q6062"] <- "support_for_secularism"
+
+names(ab4)[names(ab4) == "q609"] <- "religiousity"
+
+### Demographics
+
+names(ab4)[names(ab4) == "q1003"] <- "education"
+
+names(ab4)[names(ab4) == "q1002"] <- "sex"
+
+names(ab4)[names(ab4) == "q1012"] <- "religion"
+```
+
+## Factor analysis
+
+```{r}
+
+data_fa <- ab2[, c('govt_trust', 'judiciary_trust', 'police_trust', 'parties_trust', 'army_trust', 'q2017')]
+
+fa.parallel(data_fa, fa="fa", n.iter=100)
+
+fa_result <- fa(r = data_fa, nfactors = 2, rotate = "varimax")
+
+loadings <- fa_result$loadings
+
+```
+
+# Merging the waves
+
+I merge three waves into one data set. The three waves largely contain the same variables. I clean the data to make sure that the names and order of the variables match across all three waves and that the variables are on the same scale.
+
+The resulting merged dataset shows how the values of the given country/society have been changing over time - rather than how the values of a selected group of people (panel) have been changing over their life. Therefore, methodologically, this dataset is a time-series but it is not a panel data-file (based on WVS technique).
+
+```{r}
+
+# create a year variable in each wave for when the survey was collected.
+ab2$year <- 2011
+ab3$year <- 2013
+ab4$year <- 2016
+
+
+ab2_subset <- ab2 %>%
+  dplyr::select(qid, country, year,
+         govt_trust, army_trust, econ_performance, safety, education, 
+         support_for_secularism, support_for_democracy, religion, religiousity)
+
+ab3_subset <- ab3 %>%
+  dplyr::select(qid, country, year,
+         govt_trust, army_trust, econ_performance, safety, education, 
+         support_for_secularism, support_for_democracy, religion, religiousity)
+
+ab4_subset <- ab4 %>%
+  dplyr::select(qid, country, year,
+         govt_trust, army_trust, econ_performance, safety, education, 
+         support_for_secularism, support_for_democracy, religion, religiousity)
+
+time_series <- rbind(ab2_subset,ab3_subset, ab4_subset)
+
+
+```
+
+## **Create indices & country-level variables**
+
+```{r}
+
+time_series$performance_index <- (time_series$econ_performance + time_series$safety)/2
+
+time_series$sociocultural_views <- (time_series$support_for_secularism + time_series$support_for_democracy)/2
+
+### Regime types:
+
+# Monarchy
+time_series$monarchy = ifelse(time_series$country == "Algeria", 0, 
+              ifelse(time_series$country == "Egypt", 0, 
+              ifelse(time_series$country == "Iraq", 0, 
+              ifelse(time_series$country == "Jordan", 1, 
+              ifelse(time_series$country == "Saudi Arabia", 1, 
+              ifelse(time_series$country == "Lebanon", 0, 
+              ifelse(time_series$country == "Palestine", 0, 
+              ifelse(time_series$country == "Sudan", 0, 
+              ifelse(time_series$country == "Kuwait", 1, 
+              ifelse(time_series$country == "Yemen", 0, 
+              ifelse(time_series$country == "Libya", 0, 
+              ifelse(time_series$country == "Tunisia", 0, 
+              ifelse(time_series$country == "Morocco", 1, NA)))))))))))))
+
+# polity score
+time_series$polity2 = ifelse(time_series$country == "Algeria", 2, 
+              ifelse(time_series$country == "Egypt", -4, 
+              ifelse(time_series$country == "Iraq", 6, 
+              ifelse(time_series$country == "Jordan", -3, 
+              ifelse(time_series$country == "Saudi Arabia", -10, 
+              ifelse(time_series$country == "Lebanon", 6,
+              ifelse(time_series$country == "Libya", 0, 
+              ifelse(time_series$country == "Sudan", -4, 
+              ifelse(time_series$country == "Yemen", 0, 
+              ifelse(time_series$country == "Kuwait", -7, 
+              ifelse(time_series$country == "Tunisia", 7, 
+              ifelse(time_series$country == "Morocco", -4, NA))))))))))))
+
+time_series$regime_type <-ifelse(time_series$polity2 < 0, 0, 1)
+
+```
+
+## Country subsets
+
+```{r}
+
+alg <- subset(time_series, country == "Algeria")
+eg <- subset(time_series, country == "Egypt")
+ir <- subset(time_series, country == "Iraq")
+jo <- subset(time_series, country == "Jordan")
+lbn <- subset(time_series, country == "Lebanon")
+pal <- subset(time_series, country == "Palestine")
+sa <- subset(time_series, country == "Saudi Arabia")
+su <- subset(time_series, country == "Sudan")
+tu <- subset(time_series, country == "Tunisia")
+yem <- subset(time_series, country == "Yemen")
+
+```
+
+# Descriptive statistics
+
+I create means by country and by year for key variables.
+
+```{r}
+
+time_series_by_country <- time_series %>%
+  group_by(country) %>%
+  summarise(
+    govt_trust_avg = mean(govt_trust, na.rm = TRUE)
+  )
+
+
+ggplot(time_series_by_country, aes(reorder(country, govt_trust_avg), govt_trust_avg))+
+  geom_col(width = 0.5)+
+  coord_flip()+
+  labs(title="Political trust by country") + xlab("Country") + ylab("Average level of trust")+
+  theme(text = element_text(size = 8))
+
+# by year
+time_series_by_year <- time_series %>%
+  group_by(year) %>%
+  summarise(
+    performance_index_avg = mean(performance_index,na.rm = TRUE),
+    govt_trust_avg = mean(govt_trust, na.rm = TRUE)
+  )
+
+ggplot(time_series_by_year, aes(reorder(year, govt_trust_avg), govt_trust_avg))+
+  geom_col(width = 0.5)+
+  coord_flip()+
+  labs(title="Political trust by year") + xlab("Year") + ylab("Average level of trust")+
+  theme(text = element_text(size = 8))
+
+```
+
+# Analysis
+
+## Main Model
+
+individuals' level of trust likely depend on the country in which they live. Due to the fact that the model's key independent variable is a characteristic of the country, multilevel models are the appropriate way to model this relationship. I use generalized linear mixed effect models that predict individuals' levels of trust, allowing intercepts to vary between each country and year.
+
+```{r, warning=FALSE}
+
+# Country-fixed effects
+m1 <- glmer(factor(govt_trust) ~ performance_index + sociocultural_views + monarchy + regime_type + (1|country) + education + religion, data = time_series, family = binomial)
+
+# Year-fixed effects
+m1_year <- glmer(factor(govt_trust) ~ performance_index + sociocultural_views + monarchy + regime_type + (1|year) + education + religion, data = time_series, family = binomial)
+
+# Interaction between performance index and  country
+m2 <- glmer(factor(govt_trust) ~ performance_index*(1|country) + sociocultural_views + monarchy + regime_type + education + religion, data = time_series, family = binomial)
+
+table <- stargazer(m1, m1_year,
+          dep.var.caption = "",
+          column.labels = c("Political trust", "Year"),
+          covariate.labels = c("Performance index", "Sociocultural Values", 
+                               "Government form", "Regime type", "Country", "Education", "Religion"), 
+          type="html", out="table.doc")
+
+
+```
+
+## Predicted probability (pooled)
+
+```{r}
+
+modeldata.fig2 <- get_model_data(m1, type = "pred", terms = c("performance_index"))
+
+plot.fig2 <- ggplot(modeldata.fig2, aes(colour = as.factor(group))) + 
+  geom_line(aes(x = x, y = predicted, group = group), 
+            lwd = 1/2, colour="black") + 
+  geom_ribbon(aes(x = x, ymin = conf.low, ymax = conf.high), 
+              alpha=0.1, colour = "black") + 
+  geom_point(aes(x = x, y = predicted, group = group), 
+             size=0.5, colour="black") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank()) + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position = "bottom") + 
+  theme(legend.position="") + ggtitle("All Countries") + 
+  xlab("Performance Index") + ylab("Predicted level of trust")
+
+
+```
+
+## Predicted probability (by country)
+
+```{r}
+
+modeldata.fig3 <- get_model_data(m2, type = "pred", terms = c("performance_index", "country"))
+
+modeldata.fig3$group <- factor(modeldata.fig3$group, levels = c("Algeria"                         , "Egypt", "Iraq", "Jordan", "Kuwait", "Lebanon",                           "Libya", "Morocco", "Palestine", "Sudan",                                  "Tunisia", "Yemen"))
+
+
+plot.fig3 <- ggplot(modeldata.fig3, aes()) + facet_wrap(vars(group), nrow=3) + 
+  geom_line(aes(x = x, y = predicted, group = group), 
+            lwd = 1/2, colour="black") + 
+  geom_ribbon(aes(x = x, ymin = conf.low, ymax = conf.high), 
+              alpha=0.1, colour="black") +
+  geom_point(aes(x = x, y = predicted, group = group), size=0.5, colour="black") + 
+  theme_bw() + 
+  theme(panel.grid.major = element_blank()) + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position = "bottom") + 
+  ggtitle("By Country") + xlab("Performance Index") + ylab("")
+
+layout5 <- "
+#BBB
+ABBB
+ABBB
+ABBB
+#BBB
+"
+
+# Figure 1 - Combine both
+combined_plots <- (plot.fig2) + plot.fig3 + plot_layout(design=layout5)
+
+combined_plots
+```
+
+## Interaction plots: Regime Type
+
+```{r}
+
+# Figure 4: By democracy score
+m4 <- glmer(factor(govt_trust) ~ performance_index*regime_type + sociocultural_views + monarchy + (1|country) + education + religion, data = time_series, family = binomial)
+
+modeldata.fig4 <- get_model_data(m4, type = "pred", terms = c("performance_index", "regime_type"))
+
+plot.fig4 <- ggplot(modeldata.fig4, aes(colour = as.factor(group),
+                                          linetype = as.factor(group))) + 
+  geom_line(aes(x = x, y = predicted, group = group), lwd = 1/2) + 
+  geom_ribbon(aes(x = x, ymin = conf.low, ymax = conf.high), alpha=0.1) + 
+  geom_point(aes(x = x, y = predicted),size=2) +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank()) + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position = "bottom") + 
+  scale_colour_grey("Regime type: ", labels = c("Democracy", "Autocracy"), start = 0, end = 0.5, aesthetics = "colour") +
+  xlab("Performance index") +ylab("Predicted Political Trust") + 
+  ggtitle("By democracy score")  + scale_linetype(guide = "none")
+
+
+m5 <- glmer(factor(govt_trust) ~ performance_index*monarchy + regime_type + sociocultural_views + (1|country) + education + religion, data = time_series, family = binomial)
+
+modeldata.fig5 <- get_model_data(m5, type = "pred", terms = c("performance_index", "monarchy"))
+
+plot.fig5 <- ggplot(modeldata.fig5, aes(colour = as.factor(group),
+                                          linetype = as.factor(group))) + 
+  geom_line(aes(x = x, y = predicted, group = group), lwd = 1/2) + 
+  geom_ribbon(aes(x = x, ymin = conf.low, ymax = conf.high), alpha=0.1) + 
+  geom_point(aes(x = x, y = predicted),size=2) +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank()) + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position = "bottom") + 
+  scale_colour_grey("", labels = c("Monarchy", "Republic"), start = 0, end = 0.5, aesthetics = "colour") +
+  xlab("Performance index") +ylab("") + 
+  ggtitle("By form of government")  + scale_linetype(guide = "none")
+
+
+plot.fig4 + plot.fig5
+
+
+```
+
+## By country
+
+## Coefficient plots & hypothesis test
+
+```{r}
+
+
+# Linear model
+m6 <- lm(govt_trust ~ econ_performance + safety + regime_type + sociocultural_views + monarchy +  religion, data = time_series)
+
+
+tidied <- tidy(m6)
+
+ggplot(tidied, aes(x = term, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error), width = 0.2) +
+  theme_minimal() +
+  labs(title = "Coefficient Plot",
+       x = "Predictors",
+       y = "Estimated Coefficients") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+summary(glht(m6, "econ_performance - safety = 0"))
+
+
+```
